@@ -21,3 +21,7 @@ Transition to judging must be atomic (lock) to avoid double model calls. Timers 
 
 ## Style
 Small slices, tests for privacy and transitions, mobile first.
+
+## Dev
+`npx tsx server/dev.ts` (API :8787, mock model unless USE_REAL_MODEL=1 + ANTHROPIC_API_KEY in .env)
+`npx vite` (web :5173, proxies /api). Build: `npx vite build`. Tests: `npx vitest run`.
