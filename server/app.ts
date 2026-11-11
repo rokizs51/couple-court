@@ -270,6 +270,7 @@ export function createApp(deps: Deps) {
       const r = x.rounds[x.rounds.length - 1];
       if (!v) { x.state = "judge_error"; x.errorKind = "model"; return; }
       if (v.safety_flag) { x.state = "safety"; return; } // layer 2: model flag; verdict never stored
+      if (!prev) v.new_evidence = false; // first round has nothing to add evidence to; never trust the model here
       r.verdict = v; r.mood = mood; r.revealAt = now() + REVEAL_DELAY_MS; x.state = "verdict"; x.errorKind = undefined;
     });
   }

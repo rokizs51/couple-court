@@ -6,11 +6,12 @@ export function anthropicModel(apiKey: string, model: string): CallModel {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model, max_tokens: 1000, system, messages: [{ role: "user", content: user }] }),
+      body: JSON.stringify({ model, max_tokens: 2500, thinking: { type: "disabled" }, system, messages: [{ role: "user", content: user }] }),
     });
     if (!r.ok) throw new Error("model_http_" + r.status);
     const j: any = await r.json();
-    return j?.content?.[0]?.text ?? "";
+    // Newer models may return a thinking block first: take the text block, not content[0].
+    return (j?.content ?? []).filter((b: any) => b?.type === "text").map((b: any) => b.text).join("") ?? "";
   };
 }
 

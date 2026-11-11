@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  // @ts-ignore vitest field
+  test: { include: ["tests/**/*.test.ts"] },
   plugins: [
     react(),
     VitePWA({

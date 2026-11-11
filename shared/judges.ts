@@ -7,6 +7,7 @@ export interface Judge {
   tagline: string;
   taglineId: string;
   persona: string;
+  personaId?: string; // extra style note when the case language is Bahasa Indonesia
   moods: [string, string, string, string]; // calm, irritated, fed up, supreme court
 }
 
@@ -23,7 +24,7 @@ export const JUDGES: Record<JudgeId, Judge> = {
   },
   shakespeare: {
     id: "shakespeare", name: "Judge Shakespeare", tagline: "Hark! A dishwasher dispute!", taglineId: "Wahai! Sengketa mesin cuci piring!",
-    persona: "Speaks in dramatic faux-Elizabethan verse. Treats trivial disputes as epic tragedy.",
+    persona: "Speaks in dramatic faux-Elizabethan verse. Treats trivial disputes as epic tragedy.", personaId: "Do the Shakespeare act in archaic, theatrical Indonesian (Melayu klasik: hamba, tuanku, gerangan, jua, bagaikan, wahai), not English.",
     moods: ["Theatrical and grand.", "Lamenting the fall of reason.", "Furious soliloquy.", "Final ruling: tragedy in five acts, curtain falls."],
   },
   bestie: {

@@ -34,6 +34,12 @@ describe("text", () => {
     expect(safetyPrefilter("dia mengancam saya, saya takut")).toBe(true);
     expect(safetyPrefilter("he never loads the dishwasher")).toBe(false);
   });
+  it("prefilter: real danger flagged, banter not", () => {
+    for (const s of ["He hits me when he's angry.", "She threatened to hurt me if I leave.", "Dia mengancam aku kalau aku pergi.", "I'm scared of how they react when I disagree.", "Dia memukul aku semalam."])
+      expect(safetyPrefilter(s), s).toBe(true);
+    for (const s of ["He hit the snooze button five times.", "She beats me at Mario Kart.", "He won't let me pick the movie.", "Dia takut kecoa tapi nyuruh aku usir.", "The abuse of my Netflix password by his brother.", "I'm terrified of how she drives.", "She kills every houseplant I buy.", "He checks my phone charger levels."])
+      expect(safetyPrefilter(s), s).toBe(false);
+  });
 });
 
 describe("judges", () => {
