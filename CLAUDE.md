@@ -25,3 +25,8 @@ Small slices, tests for privacy and transitions, mobile first.
 ## Dev
 `npx tsx server/dev.ts` (API :8787, mock model unless USE_REAL_MODEL=1 + ANTHROPIC_API_KEY in .env)
 `npx vite` (web :5173, proxies /api). Build: `npx vite build`. Tests: `npx vitest run`.
+
+## Deploy (Cloudflare)
+Single Worker serves static `dist/` (assets) and `/api/*` (Hono). Store = UpstashStore (REST). See wrangler.toml.
+Secrets via `npx wrangler secret put` only: ANTHROPIC_API_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN.
+Local Workers test: `npx vite build && npx wrangler dev` with --var flags, e2e via `BASE_URL=... npx playwright test`.
