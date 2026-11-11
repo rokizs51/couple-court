@@ -1,0 +1,21 @@
+name = "couple-court"
+main = "server/worker.ts"
+compatibility_date = "2025-09-01"
+
+# Frontend: static build output served from the same Worker, same origin as the API (no CORS).
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+# Run the Worker first for /api/*, serve static assets for everything else.
+run_worker_first = ["/api/*"]
+
+[vars]
+USE_REAL_MODEL = "1"
+ANTHROPIC_MODEL = "claude-haiku-5-5"
+DAILY_CAP = "300"
+
+# Secrets (never put these in this file). Set with:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put UPSTASH_REDIS_REST_URL
+#   npx wrangler secret put UPSTASH_REDIS_REST_TOKEN
