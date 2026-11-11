@@ -2,6 +2,10 @@ name = "couple-court"
 main = "server/worker.ts"
 compatibility_date = "2025-09-01"
 
+# Custom domain: Cloudflare creates the DNS record and TLS cert automatically.
+# The zone rokizs.site must be in the same Cloudflare account as this Worker.
+routes = [{ pattern = "couple-court.rokizs.site", custom_domain = true }]
+
 # Frontend: static build output served from the same Worker, same origin as the API (no CORS).
 [assets]
 directory = "./dist"
