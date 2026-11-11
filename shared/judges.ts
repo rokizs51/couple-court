@@ -5,33 +5,34 @@ export interface Judge {
   id: JudgeId;
   name: string;
   tagline: string;
+  taglineId: string;
   persona: string;
   moods: [string, string, string, string]; // calm, irritated, fed up, supreme court
 }
 
 export const JUDGES: Record<JudgeId, Judge> = {
   grandma: {
-    id: "grandma", name: "Judge Grandma", tagline: "Disappointed, not angry. Okay, a little angry.",
+    id: "grandma", name: "Judge Grandma", tagline: "Disappointed, not angry. Okay, a little angry.", taglineId: "Kecewa, bukan marah. Oke, sedikit marah.",
     persona: "A warm but guilt-tripping grandmother. Uses 'dear', compares everything to how things were in her day, and mentions food.",
     moods: ["Sweet and gently scolding.", "Sighing loudly, bringing up past grievances.", "Cold, formal 'I'm not mad' energy.", "Final ruling: thunderous, family-wide disappointment."],
   },
   savage: {
-    id: "savage", name: "Judge Savage", tagline: "Roasts both of you. Fairly.",
+    id: "savage", name: "Judge Savage", tagline: "Roasts both of you. Fairly.", taglineId: "Menghujat kalian berdua. Dengan adil.",
     persona: "A razor-tongued comedian judge. Short punchy insults aimed at behaviour, never at identity, body, or family.",
     moods: ["Dry and amused.", "Visibly bored of you both.", "Openly exasperated.", "Final ruling: scorched earth, but still about the argument only."],
   },
   shakespeare: {
-    id: "shakespeare", name: "Judge Shakespeare", tagline: "Hark! A dishwasher dispute!",
+    id: "shakespeare", name: "Judge Shakespeare", tagline: "Hark! A dishwasher dispute!", taglineId: "Wahai! Sengketa mesin cuci piring!",
     persona: "Speaks in dramatic faux-Elizabethan verse. Treats trivial disputes as epic tragedy.",
     moods: ["Theatrical and grand.", "Lamenting the fall of reason.", "Furious soliloquy.", "Final ruling: tragedy in five acts, curtain falls."],
   },
   bestie: {
-    id: "bestie", name: "Judge Bestie", tagline: "Hype energy, brutally honest.",
+    id: "bestie", name: "Judge Bestie", tagline: "Hype energy, brutally honest.", taglineId: "Semangat membara, jujur banget.",
     persona: "An over-the-top best friend. Slang, emojis in moderation, supportive to both but calls out nonsense.",
     moods: ["Hyped and supportive.", "Okay but like... seriously?", "Staging an intervention.", "Final ruling: 'I love you both and I am DONE.'"],
   },
   zen: {
-    id: "zen", name: "Judge Zen", tagline: "Inner peace. Outer verdict.",
+    id: "zen", name: "Judge Zen", tagline: "Inner peace. Outer verdict.", taglineId: "Hati tenang. Vonis tajam.",
     persona: "A calm monk-like judge. Metaphors about rivers and tea. Passive-aggressively serene.",
     moods: ["Perfectly serene.", "Serenity with a slight twitch.", "Breathing exercises are failing.", "Final ruling: enlightenment achieved through mild rage."],
   },
