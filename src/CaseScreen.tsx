@@ -3,7 +3,6 @@ import { api, ApiError, CaseView, clockOffset } from "./api";
 import { dict, Dict } from "./i18n";
 import { JUDGES, JUDGE_IDS, JudgeId, JudgePick } from "../shared/judges";
 import { MAX_STATEMENT } from "../shared/text";
-import { STYLE } from "./judgeStyle";
 import { JudgeAvatar } from "./components/JudgeAvatar";
 import { QR } from "./App";
 import { shareVerdictCard } from "./shareCard";
@@ -49,14 +48,14 @@ export function CaseScreen({ code, onHome, onLost }: { code: string; onHome: () 
 
   return (
     <main className="screen">
-      {offline && <div className="offline">⚠ offline, retrying...</div>}
-      <div className="topbar"><button className="link" onClick={onHome}>⚖️ {t.home}</button><span className="pill">{code}</span></div>
+      {offline && <div className="offline">Offline, retrying...</div>}
+      <div className="topbar"><button className="link" onClick={onHome}>{t.home}</button><span className="pill">{code}</span></div>
       {cv.state === "waiting_for_partner" && <Waiting cv={cv} t={t} />}
       {cv.state === "judge_vote" && <Vote cv={cv} t={t} onVote={(p) => act(() => api.vote(code, p))} />}
       {cv.state === "drafting" && <Draft cv={cv} t={t} onSubmit={(txt, ap) => act(() => api.statement(code, txt, ap))} />}
       {cv.state === "judging" && <Judging cv={cv} t={t} />}
       {cv.state === "judge_error" && (
-        <div className="card center"><div className="hero">🍜</div><h2>{t.errTitle}</h2><p className="muted">{cv.error === "cap" ? t.errCap : t.errBody}</p>
+        <div className="card center"><h2>{t.errTitle}</h2><p className="muted">{cv.error === "cap" ? t.errCap : t.errBody}</p>
           {cv.error !== "cap" && <button className="btn primary" onClick={() => act(() => api.retry(code))}>{t.tryAgain}</button>}</div>
       )}
       {cv.state === "verdict" && <Verdict cv={cv} t={t} onAppeal={() => act(() => api.appeal(code))} onHome={onHome} />}
@@ -67,7 +66,7 @@ export function CaseScreen({ code, onHome, onLost }: { code: string; onHome: () 
 }
 
 function Msg({ t, text, onHome }: { t: Dict; text: string; onHome: () => void }) {
-  return <main className="screen center"><div className="hero">🕳️</div><p>{text}</p><button className="btn" onClick={onHome}>{t.home}</button></main>;
+  return <main className="screen center"><p>{text}</p><button className="btn" onClick={onHome}>{t.home}</button></main>;
 }
 
 function Waiting({ cv, t }: { cv: CaseView; t: Dict }) {
@@ -78,7 +77,7 @@ function Waiting({ cv, t }: { cv: CaseView; t: Dict }) {
     <div className="card center">
       <p className="muted">{t.shareCode}</p>
       <div className="codebox big">{cv.code}</div>
-      <button className="btn" onClick={copy}>{copied ? t.copied : t.copyLink}</button>
+      <button className="btn dark" onClick={copy}>{copied ? t.copied : t.copyLink}</button>
       <QR text={link} /><p className="tiny">{t.scanQr}</p>
       <p className="pulse">{t.waiting}</p>
     </div>
@@ -133,21 +132,23 @@ function Draft({ cv, t, onSubmit }: { cv: CaseView; t: Dict; onSubmit: (txt: str
   useEffect(() => { localStorage.setItem(dkey, text); }, [text, dkey]); // drafts survive locked phone / app switch
   const submit = () => { onSubmit(text, apology); localStorage.removeItem(dkey); };
   return (
-    <div>
-      <div className="judgebar" style={{ ["--c" as any]: STYLE[j].color }}>
-        <span className="em">{STYLE[j].emoji}</span>
+    <div className="screen-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <p className="eyebrow">{t.step2}</p>
+      <div className="judgebar">
+        <JudgeAvatar judge={j} size={44} />
         <div><small>{t.judgeIs}</small><b>{JUDGES[j].name}</b></div>
       </div>
-      {cv.coinFlip && <p className="muted">🪙 {t.coin}</p>}
+      {cv.coinFlip && <p className="muted">{t.coin}</p>}
       {cv.appealCount > 0 && <p className="pill warn">{t.appealCount} {cv.appealCount} {t.of} 3</p>}
       {mine ? (
-        <div className="card center"><h3>✅ {t.filed}</h3><p className="pulse">{t.waitOther}</p></div>
+        <div className="card center"><h3>{t.filed}</h3><p className="pulse">{t.waitOther}</p></div>
       ) : (
         <>
-          <h2>{t.fileStatement}</h2><p className="muted">{t.stmtHelp}</p>
+          <h2>{t.fileStatement}</h2>
+          <p className="muted">{t.privateNote}. {t.stmtHelp}</p>
           {round.otherSubmitted && <p className="pill ok">{t.otherDone}</p>}
           <textarea className="field area" maxLength={MAX_STATEMENT} placeholder={t.stmtPh} value={text} onChange={(e) => setText(e.target.value)} />
-          <div className="count">{text.length}/{MAX_STATEMENT} {t.chars}</div>
+          <div className="stmt-meta"><span className="saved">{t.saved}</span><span className="count">{text.length}/{MAX_STATEMENT} {t.chars}</span></div>
           <label className="check"><input type="checkbox" checked={apology} onChange={(e) => setApology(e.target.checked)} /> {t.apology}</label>
           <button className="btn primary" disabled={!text.trim()} onClick={submit}>{t.submit}</button>
         </>
@@ -158,7 +159,7 @@ function Draft({ cv, t, onSubmit }: { cv: CaseView; t: Dict; onSubmit: (txt: str
 
 function Judging({ cv, t }: { cv: CaseView; t: Dict }) {
   const j = cv.judgeId!;
-  return <div className="card center"><div className="hero spin">{STYLE[j].emoji}</div><h2>{t.judging}</h2><p className="muted">{JUDGES[j].name}</p></div>;
+  return <div className="card center"><div className="spin"><JudgeAvatar judge={j} size={64} /></div><h2>{t.judging}</h2><p className="muted">{JUDGES[j].name}</p></div>;
 }
 
 function Verdict({ cv, t, onAppeal, onHome }: { cv: CaseView; t: Dict; onAppeal: () => void; onHome: () => void }) {
@@ -178,31 +179,41 @@ function Verdict({ cv, t, onAppeal, onHome }: { cv: CaseView; t: Dict; onAppeal:
 
   if (!revealed) {
     return (
-      <div className="card center" style={{ ["--c" as any]: STYLE[j].color }}>
-        <div className="hero">{STYLE[j].emoji}</div><h2>{t.allRise}</h2>
-        <p className="muted">{t.gavelIn}</p><div className="timer big">{Math.max(1, Math.ceil(left / 1000))}</div>
+      <div className="card center">
+        <JudgeAvatar judge={j} size={64} /><h2>{t.allRise}</h2>
+        <p className="muted">{t.gavelIn}</p><div className="countdown">{Math.max(1, Math.ceil(left / 1000))}</div>
       </div>
     );
   }
   return (
-    <div className="verdict" style={{ ["--c" as any]: STYLE[j].color }}>
-      <div className="gavel">🔨</div>
-      <div className="judgebar"><span className="em">{STYLE[j].emoji}</span><div><b>{JUDGES[j].name}</b>
-        <div className="mood"><span>{t.mood}: {t.moods[r.mood]}</span><div className="meter"><i style={{ width: `${(r.mood + 1) * 25}%` }} /></div></div></div></div>
+    <div className="verdict">
+      {idx === 0 && <p className="eyebrow">{t.step3}</p>}
+      <div className="judgebar">
+        <JudgeAvatar judge={j} size={44} />
+        <div><b>{JUDGES[j].name}</b>
+          <div className="mood"><span>{t.mood}: {t.moods[r.mood]}</span>
+            <div className="meter" aria-hidden="true">{[0, 1, 2, 3].map((n) => <i key={n} className={n <= r.mood ? "on" : ""} />)}</div></div></div>
+      </div>
       <p className="quote d1">“{v.opening_line}”</p>
       <h3 className="d2">{t.faultSplit}</h3>
-      <div className="split d2"><div className="bar"><i style={{ width: `${v.fault_split!.a}%` }} /></div>
-        <div className="splitl"><span>{nameA} {v.fault_split!.a}%</span><span>{v.fault_split!.b}% {nameB}</span></div></div>
-      <div className="card d3"><b>{t.you} · {myFault}%</b><p>{mine.note}</p></div>
-      <div className="card d3"><b>{cv.players.other} · {otherFault}%</b><p>{theirs.note}</p></div>
-      <h3 className="d4">{t.ruling}</h3><p className="d4">{v.ruling}</p>
+      <div className="d2">
+        <div className="splitbar"><i className="a" style={{ width: `${v.fault_split!.a}%` }}>{v.fault_split!.a}%</i><i className="b" style={{ width: `${v.fault_split!.b}%` }}>{v.fault_split!.b}%</i></div>
+        <div className="splitl"><span>{nameA}</span><span>{nameB}</span></div>
+      </div>
+      <div className="grid2 d3">
+        <div className="card note"><b>{t.you} · {myFault}%</b><p>{mine.note}</p></div>
+        <div className="card note"><b>{cv.players.other} · {otherFault}%</b><p>{theirs.note}</p></div>
+      </div>
+      <h3 className="d4">{t.ruling}</h3><p className="ruling d4">{v.ruling}</p>
       <h3 className="d5">{t.sentence}</h3>
-      <div className="card d5"><b>{t.you}</b><p>🔨 {mine.sent}</p></div>
-      <div className="card d5"><b>{cv.players.other}</b><p>🔨 {theirs.sent}</p></div>
+      <div className="grid2 d5">
+        <div className="card sentence"><b>{t.you}</b><p>{mine.sent}</p></div>
+        <div className="card sentence"><b>{cv.players.other}</b><p>{theirs.sent}</p></div>
+      </div>
       <p className="quote d6">“{v.closing_line}”</p>
       <div className="actions d6">
         {cv.canAppeal ? <button className="btn primary" onClick={onAppeal}>{t.appeal} ({cv.appealCount}/3)</button> : <p className="pill warn">{t.appealFinal}</p>}
-        <button className="btn" onClick={() => shareVerdictCard({ judge: JUDGES[j].name, emoji: STYLE[j].emoji, color: STYLE[j].color, v, nameA, nameB, mood: t.moods[r.mood] })}>{t.share}</button>
+        <button className="btn" onClick={() => shareVerdictCard({ judgeId: j, judge: JUDGES[j].name, v, nameA, nameB, mood: t.moods[r.mood] })}>{t.share}</button>
         <button className="link" onClick={onHome}>{t.newCase}</button>
       </div>
     </div>

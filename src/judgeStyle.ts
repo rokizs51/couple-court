@@ -1,9 +1,10 @@
-import type { JudgeId } from "../shared/judges";
-export const STYLE: Record<JudgeId | "surprise", { emoji: string; color: string }> = {
-  grandma: { emoji: "👵", color: "#f4a6c0" },
-  savage: { emoji: "😈", color: "#ff5c5c" },
-  shakespeare: { emoji: "🎭", color: "#c9a227" },
-  bestie: { emoji: "💅", color: "#b983ff" },
-  zen: { emoji: "🧘", color: "#6fd3b0" },
-  surprise: { emoji: "🎲", color: "#8ab4ff" },
-};
+import type { JudgePick } from "../shared/judges";
+
+/** Judge accent color, read from the design tokens (src/styles/tokens.css). */
+export function judgeColor(id: JudgePick): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(`--judge-${id}`).trim();
+}
+
+export function token(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}

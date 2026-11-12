@@ -4,6 +4,7 @@ import { api, ApiError, getToken, setToken, forgetToken } from "./api";
 import { dict, Lang } from "./i18n";
 import { CaseScreen } from "./CaseScreen";
 import { ROOM_CODE_RE } from "../shared/text";
+import { token } from "./judgeStyle";
 
 const hashCode = () => location.hash.replace("#", "").toUpperCase();
 
@@ -41,18 +42,20 @@ function Home({ lang, setLang, onEnter }: { lang: Lang; setLang: (l: Lang) => vo
   return (
     <main className="screen center">
       <button className="lang" onClick={() => setLang(lang === "en" ? "id" : "en")}>{t.langName}</button>
-      <div className="hero">⚖️</div>
+      <div className="home-mark" aria-hidden="true">CC</div>
       <h1>Couple Court</h1>
       <p className="muted">{t.tagline}</p>
-      <input className="field" placeholder={t.yourName} maxLength={30} value={name} onChange={(e) => setName(e.target.value)} />
-      <button className="btn primary" disabled={busy} onClick={create}>{t.openCase}</button>
-      <div className="or">· · ·</div>
-      <div className="row">
-        <input className="field code" placeholder={t.codePh} maxLength={4} value={joinCode} autoCapitalize="characters"
-          onChange={(e) => setJoinCode(e.target.value.toUpperCase())} />
-        <button className="btn" onClick={joinNow}>{t.joinCase}</button>
+      <div className="home-card">
+        <input className="field" placeholder={t.yourName} maxLength={30} value={name} onChange={(e) => setName(e.target.value)} />
+        <button className="btn primary" disabled={busy} onClick={create}>{t.openCase}</button>
+        <div className="or">· · ·</div>
+        <div className="row">
+          <input className="field code" placeholder={t.codePh} maxLength={4} value={joinCode} autoCapitalize="characters"
+            onChange={(e) => setJoinCode(e.target.value.toUpperCase())} />
+          <button className="btn dark" onClick={joinNow}>{t.joinCase}</button>
+        </div>
+        {err && <p className="err">{err}</p>}
       </div>
-      {err && <p className="err">{err}</p>}
       <p className="tiny">{t.fun}<br />{t.privacy}</p>
     </main>
   );
@@ -72,7 +75,6 @@ function CaseRoute({ code, lang, onHome }: { code: string; lang: Lang; onHome: (
   }
   return (
     <main className="screen center">
-      <div className="hero">🔔</div>
       <h2>{t.joinCase}</h2>
       <div className="codebox">{code}</div>
       <input className="field" placeholder={t.yourName} maxLength={30} value={name} onChange={(e) => setName(e.target.value)} />
@@ -85,6 +87,6 @@ function CaseRoute({ code, lang, onHome }: { code: string; lang: Lang; onHome: (
 
 export function QR({ text }: { text: string }) {
   const [src, setSrc] = useState("");
-  useEffect(() => { QRCode.toDataURL(text, { margin: 1, width: 220, color: { dark: "#1b1226", light: "#ffffff" } }).then(setSrc); }, [text]);
+  useEffect(() => { QRCode.toDataURL(text, { margin: 1, width: 220, color: { dark: token("--ink"), light: token("--white") } }).then(setSrc); }, [text]);
   return src ? <img className="qr" src={src} alt="QR" width={160} height={160} /> : null;
 }

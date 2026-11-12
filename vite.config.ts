@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: "Couple Court", short_name: "CoupleCourt",
         description: "Settle your tiny fights in a mock courtroom. For fun only.",
-        theme_color: "#1b1226", background_color: "#1b1226", display: "standalone", start_url: "/",
+        theme_color: "#F7F1E5", background_color: "#F7F1E5", display: "standalone", start_url: "/",
         icons: [
           { src: "icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "icon-512.png", sizes: "512x512", type: "image/png" },

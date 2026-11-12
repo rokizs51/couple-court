@@ -34,13 +34,13 @@ test("full two-phone flow: create, join, vote, file, reveal, appeal", async ({ b
 
   // A files; B must NOT see A's text anywhere in the DOM
   await A.page.locator("textarea").fill("PRIVATE-A the dishes are still dirty");
-  await A.page.getByRole("button", { name: "Submit statement" }).click();
+  await A.page.getByRole("button", { name: "File statement" }).click();
   await expect(B.page.getByText("Your partner has filed")).toBeVisible({ timeout: 8000 });
   expect(await B.page.content()).not.toContain("PRIVATE-A");
 
   // B files -> judging -> synced reveal on both phones
   await B.page.locator("textarea").fill("PRIVATE-B I was busy");
-  await B.page.getByRole("button", { name: "Submit statement" }).click();
+  await B.page.getByRole("button", { name: "File statement" }).click();
   await expect(A.page.getByText("The ruling")).toBeVisible({ timeout: 15000 });
   await expect(B.page.getByText("The ruling")).toBeVisible({ timeout: 15000 });
   // after the verdict both statements are fair game
@@ -71,9 +71,9 @@ test("bahasa flow shows Indonesian UI and verdict", async ({ browser }) => {
   await B.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await expect(A.page.getByText("Ajukan pernyataanmu")).toBeVisible({ timeout: 8000 });
   await A.page.locator("textarea").fill("Dia lupa cuci piring lagi");
-  await A.page.getByRole("button", { name: "Kirim pernyataan" }).click();
+  await A.page.getByRole("button", { name: "Ajukan pernyataan", exact: true }).click();
   await B.page.locator("textarea").fill("Aku sibuk kerja");
-  await B.page.getByRole("button", { name: "Kirim pernyataan" }).click();
+  await B.page.getByRole("button", { name: "Ajukan pernyataan", exact: true }).click();
   await expect(A.page.getByText("Putusan", { exact: true })).toBeVisible({ timeout: 15000 });
   await A.page.waitForTimeout(4500); // let the staggered reveal animation finish
   await A.page.screenshot({ path: "e2e/shots/verdict-id.png", fullPage: true });
@@ -93,9 +93,9 @@ test("safety: scary statement shows plain support screen and no verdict", async 
   await B.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await expect(A.page.getByText("File your statement")).toBeVisible({ timeout: 8000 });
   await A.page.locator("textarea").fill("I'm scared of how they react when I disagree");
-  await A.page.getByRole("button", { name: "Submit statement" }).click();
+  await A.page.getByRole("button", { name: "File statement" }).click();
   await B.page.locator("textarea").fill("whatever");
-  await B.page.getByRole("button", { name: "Submit statement" }).click();
+  await B.page.getByRole("button", { name: "File statement" }).click();
   await expect(A.page.getByText("Let's pause the game")).toBeVisible({ timeout: 10000 });
   await expect(B.page.getByText("Let's pause the game")).toBeVisible({ timeout: 10000 });
   await expect(A.page.getByText("Fault split")).toHaveCount(0);
