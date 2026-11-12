@@ -30,3 +30,7 @@ Small slices, tests for privacy and transitions, mobile first.
 Single Worker serves static `dist/` (assets) and `/api/*` (Hono). Store = UpstashStore (REST). See wrangler.toml.
 Secrets via `npx wrangler secret put` only: ANTHROPIC_API_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN.
 Local Workers test: `npx vite build && npx wrangler dev` with --var flags, e2e via `BASE_URL=... npx playwright test`.
+
+## Design
+Design lives in `docs/design/`. Read `DESIGN.md` first, then match the layout, colors and type of the PNGs.
+Use only variables from `src/styles/tokens.css`. Do not invent new patterns for screens that are not designed; ask first.
