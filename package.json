@@ -16,6 +16,8 @@
   "type": "module",
   "private": "true",
   "dependencies": {
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/fraunces": "^5.3.0",
     "@hono/node-server": "^2.1.7",
     "hono": "^4.13.18",
     "qrcode": "^1.5.4",

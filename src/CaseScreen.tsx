@@ -4,6 +4,7 @@ import { dict, Dict } from "./i18n";
 import { JUDGES, JUDGE_IDS, JudgeId, JudgePick } from "../shared/judges";
 import { MAX_STATEMENT } from "../shared/text";
 import { STYLE } from "./judgeStyle";
+import { JudgeAvatar } from "./components/JudgeAvatar";
 import { QR } from "./App";
 import { shareVerdictCard } from "./shareCard";
 
@@ -84,25 +85,40 @@ function Waiting({ cv, t }: { cv: CaseView; t: Dict }) {
   );
 }
 
+const VOTE_MS = 30_000;
+const mmss = (ms: number) => { const s = Math.ceil(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+
 function Vote({ cv, t, onVote }: { cv: CaseView; t: Dict; onVote: (p: JudgePick) => void }) {
   const left = useCountdown(cv.vote.deadline);
   const mine = cv.vote.myPick;
+  const [sel, setSel] = useState<JudgePick | null>(null);
+  const chosen = mine ?? sel; // a locked vote is final; before locking the player can change their mind
   const tag = (id: JudgeId) => (cv.lang === "id" ? JUDGES[id].taglineId : JUDGES[id].tagline);
+  const pct = cv.vote.deadline ? Math.min(100, (left / VOTE_MS) * 100) : 100;
+  const card = (id: JudgePick, name: string, line: string) => (
+    <button key={id} type="button" disabled={!!mine} aria-pressed={chosen === id}
+      className={"vcard" + (chosen === id ? " sel" : "") + (id === "surprise" ? " dashed" : "")} onClick={() => setSel(id)}>
+      <JudgeAvatar judge={id} size={44} />
+      <b>{name}</b><small>{line}</small>
+    </button>
+  );
   return (
-    <div>
-      <h2>{t.pickJudge}</h2><p className="muted">{t.pickSub}</p>
-      <div className="timer">{Math.ceil(left / 1000)}{t.seconds}</div>
-      <div className="grid">
-        {JUDGE_IDS.map((id) => (
-          <button key={id} disabled={!!mine} className={"judge" + (mine === id ? " sel" : "")} style={{ ["--c" as any]: STYLE[id].color }} onClick={() => onVote(id)}>
-            <span className="em">{STYLE[id].emoji}</span><b>{JUDGES[id].name}</b><small>{tag(id)}</small>
-          </button>
-        ))}
-        <button disabled={!!mine} className={"judge" + (mine === "surprise" ? " sel" : "")} style={{ ["--c" as any]: STYLE.surprise.color }} onClick={() => onVote("surprise")}>
-          <span className="em">{STYLE.surprise.emoji}</span><b>{t.surprise}</b><small>{t.surpriseTag}</small>
-        </button>
+    <div className="vote-screen">
+      <p className="eyebrow">{t.step1}</p>
+      <h2 className="vtitle">{t.whoHears}</h2>
+      <p className="vsub">{t.pickSub}</p>
+      <div className="vgrid">
+        {JUDGE_IDS.map((id) => card(id, JUDGES[id].name, tag(id)))}
+        {card("surprise", t.surprise, t.surpriseTag)}
       </div>
-      {mine && <p className="pulse">{t.lockedIn}</p>}
+      <div className="vfoot">
+        {mine && <p className="vsub pulse">{t.lockedIn}</p>}
+        <div className="vtimer">
+          <div className="vbar" role="progressbar" aria-valuemin={0} aria-valuemax={30} aria-valuenow={Math.ceil(left / 1000)}><i style={{ width: pct + "%" }} /></div>
+          <span>{mmss(left)} {t.left}</span>
+        </div>
+        <button type="button" className="vbtn" disabled={!sel || !!mine} onClick={() => sel && onVote(sel)}>{t.lockIn}</button>
+      </div>
     </div>
   );
 }

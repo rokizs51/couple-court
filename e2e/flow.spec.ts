@@ -24,9 +24,11 @@ test("full two-phone flow: create, join, vote, file, reveal, appeal", async ({ b
   await B.page.getByRole("button", { name: "Join", exact: true }).click();
 
   // both vote for different judges -> coin flip -> a judge is assigned
-  await expect(A.page.getByText("Choose your judge")).toBeVisible();
+  await expect(A.page.getByText("Who hears this case?")).toBeVisible();
   await A.page.getByRole("button", { name: /Judge Savage/ }).click();
+  await A.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await B.page.getByRole("button", { name: /Judge Zen/ }).click();
+  await B.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await expect(A.page.getByText("File your statement")).toBeVisible({ timeout: 8000 });
   await expect(B.page.getByText("File your statement")).toBeVisible({ timeout: 8000 });
 
@@ -62,9 +64,11 @@ test("bahasa flow shows Indonesian UI and verdict", async ({ browser }) => {
   const code = (await A.page.locator(".codebox.big").textContent())!.trim();
   await B.page.goto(`/#${code}`);
   await B.page.getByRole("button", { name: /Join|Gabung/ }).first().click();
-  await expect(A.page.getByText("Pilih hakimmu")).toBeVisible();
+  await expect(A.page.getByText("Siapa yang mengadili perkara ini?")).toBeVisible();
   await A.page.getByRole("button", { name: /Judge Grandma/ }).click();
+  await A.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await B.page.getByRole("button", { name: /Judge Grandma/ }).click();
+  await B.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await expect(A.page.getByText("Ajukan pernyataanmu")).toBeVisible({ timeout: 8000 });
   await A.page.locator("textarea").fill("Dia lupa cuci piring lagi");
   await A.page.getByRole("button", { name: "Kirim pernyataan" }).click();
@@ -84,7 +88,9 @@ test("safety: scary statement shows plain support screen and no verdict", async 
   await B.page.goto(`/#${code}`);
   await B.page.getByRole("button", { name: "Join", exact: true }).click();
   await A.page.getByRole("button", { name: /Judge Zen/ }).click();
+  await A.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await B.page.getByRole("button", { name: /Judge Zen/ }).click();
+  await B.page.getByRole("button", { name: /Lock in my vote|Kunci pilihanku/ }).click();
   await expect(A.page.getByText("File your statement")).toBeVisible({ timeout: 8000 });
   await A.page.locator("textarea").fill("I'm scared of how they react when I disagree");
   await A.page.getByRole("button", { name: "Submit statement" }).click();

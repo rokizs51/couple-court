@@ -1,0 +1,28 @@
+/* Couple Court design tokens (exact values from the design) */
+:root {
+  --paper: #F7F1E5;
+  --card: #FFFBF2;
+  --ink: #221B33;
+  --muted: #5E566B;
+  --line: #E2D7C2;
+  --burgundy: #8C2F39;
+  --gold: #D9A23B;
+  --white: #FFFFFF;
+
+  /* judge badge backgrounds */
+  --judge-grandma: #E7A9B8;
+  --judge-savage: #8C2F39;
+  --judge-shakespeare: #3F5E8C;
+  --judge-bestie: #E0A63A;
+  --judge-zen: #4F7A62;
+  --judge-surprise: #221B33;
+
+  --font-display: 'Fraunces', serif;   /* 600, 800 (italic 600 for judge quotes) */
+  --font-body: 'DM Sans', sans-serif;  /* 400, 500, 700 */
+
+  --radius-btn: 14px;
+  --radius-card: 16px;
+  --radius-lg: 24px;
+  --btn-h: 52px;
+  --tap-min: 44px;
+}

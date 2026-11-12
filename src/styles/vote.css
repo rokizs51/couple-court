@@ -1,0 +1,23 @@
+/* Judge vote screen. Tokens only: see docs/design/DESIGN.md */
+body:has(.vote-screen){background:var(--paper)}
+.vote-screen{display:flex;flex-direction:column;gap:12px;min-height:calc(100dvh - 40px);color:var(--ink);font-family:var(--font-body)}
+.vote-screen .eyebrow{margin:8px 0 0;font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.vote-screen .vtitle{font-family:var(--font-display);font-weight:800;font-size:2rem;line-height:1.1;margin:0;color:var(--ink)}
+.vote-screen .vsub{margin:0;color:var(--muted);font-size:1rem;line-height:1.45}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.vcard{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;min-height:var(--tap-min);padding:14px;
+  background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius-card);cursor:pointer;font-family:var(--font-body)}
+.vcard b{font-family:var(--font-display);font-weight:800;font-size:1.05rem;line-height:1.15}
+.vcard small{color:var(--muted);font-size:.9rem;line-height:1.35}
+.vcard.sel{border:3px solid var(--ink);padding:12px}
+.vcard.dashed{background:transparent;border:1px dashed var(--ink)}
+.vcard.dashed.sel{border:3px dashed var(--ink)}
+.vcard:disabled:not(.sel){opacity:.5;cursor:default}
+.vcard:focus-visible,.vbtn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.vfoot{margin-top:auto;display:flex;flex-direction:column;gap:14px;padding-top:16px}
+.vtimer{display:flex;align-items:center;gap:12px;color:var(--ink);font-size:.95rem}
+.vbar{flex:1;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.vbar i{display:block;height:100%;background:var(--gold);transition:width .25s linear}
+.vbtn{height:var(--btn-h);border:0;border-radius:var(--radius-btn);background:var(--burgundy);color:var(--white);font-family:var(--font-body);font-weight:700;font-size:1.1rem;cursor:pointer}
+.vbtn:disabled{opacity:.45;cursor:default}
+@media (min-width:768px){.vote-screen{max-width:760px;margin:0 auto}.vgrid{grid-template-columns:repeat(3,1fr)}}
