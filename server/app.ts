@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Store } from "./store";
 import { JUDGE_IDS, JudgeId, JudgePick, MoodLevel, computeMoodLevel, resolveJudgeId } from "../shared/judges";
+import { classifyModelError } from "./model";
 import { cleanStatement, generateRoomCode, ROOM_CODE_RE, safetyPrefilter } from "../shared/text";
 import { Verdict, validateVerdict } from "../shared/verdict";
 import { CallModel, Lang, judgeCase } from "../shared/prompt";
@@ -14,19 +15,24 @@ export type PID = "a" | "b";
 export type CaseState = "waiting_for_partner" | "judge_vote" | "drafting" | "judging" | "judge_error" | "verdict" | "safety";
 
 interface Statement { text: string; apology: boolean }
-interface Round { statements: { a?: Statement; b?: Statement }; verdict?: Verdict; mood?: MoodLevel; revealAt?: number }
+interface Round { statements: { a?: Statement; b?: Statement }; verdict?: Verdict; mood?: MoodLevel; revealAt?: number; purged?: boolean }
+
+/** Operator-facing record of whether the judge (model API) is working. Never contains statements or keys. */
+export interface ModelHealth { status: "ok" | "auth" | "billing" | "degraded"; lastOkAt?: number; lastFailAt?: number; lastKind?: string; fails: number; updatedAt: number }
 interface Player { name: string; tokenHash: string }
 export interface Case {
   code: string; lang: Lang; state: CaseState; createdAt: number; expiresAt: number;
   players: { a: Player; b?: Player };
   votes: { a?: JudgePick; b?: JudgePick }; votesRevealed: boolean; voteDeadline?: number;
   judgeId?: JudgeId; coinFlip?: { a: JudgeId; b: JudgeId; winner: JudgeId };
-  appealCount: number; rounds: Round[]; errorKind?: "model" | "cap";
+  appealCount: number; rounds: Round[]; errorKind?: "model" | "cap" | "closed";
 }
 
 export interface Deps {
   store: Store; callModel: CallModel; isRealModel?: boolean;
   now?: () => number; rng?: () => number; dailyCap?: number;
+  /** Enables GET /api/admin/status when set. Leave unset to disable the admin API entirely. */
+  adminToken?: string;
 }
 
 class HttpError extends Error { constructor(public status: number, public code: string) { super(code); } }
@@ -234,6 +240,22 @@ export function createApp(deps: Deps) {
     return c.json(view(fresh, r.me));
   });
 
+  // ---------- model health (for the operator monitor) ----------
+  const HEALTH_KEY = "health:model";
+  async function recordHealth(ok: boolean, failure?: string) {
+    try {
+      const prev = (await store.get<ModelHealth>(HEALTH_KEY)) ?? { status: "ok" as const, fails: 0, updatedAt: 0 };
+      const t = now();
+      const h: ModelHealth = ok
+        ? { ...prev, status: "ok", fails: 0, lastOkAt: t, updatedAt: t }
+        : { ...prev, status: failure === "auth" || failure === "billing" ? failure : "degraded", fails: prev.fails + 1, lastFailAt: t, lastKind: failure, updatedAt: t };
+      await store.set(HEALTH_KEY, h, 30 * 24 * 3600);
+    } catch { /* health tracking must never break judging */ }
+  }
+
+  /** Statements are only needed to produce the verdict. Once it exists (or the case stops for safety) the text is deleted. */
+  function purge(r: Round) { r.statements = {}; r.purged = true; }
+
   // ---------- judging ----------
   async function runJudging(code: string) {
     const cs0 = await store.get<Case>(key(code));
@@ -242,7 +264,7 @@ export function createApp(deps: Deps) {
     const A = round.statements.a!, B = round.statements.b!;
 
     // Safety layer 1: code prefilter, no model call at all.
-    if (safetyPrefilter(A.text, B.text)) { await mutate(code, (x) => { if (x.state === "judging") x.state = "safety"; }); return; }
+    if (safetyPrefilter(A.text, B.text)) { await mutate(code, (x) => { if (x.state === "judging") { x.state = "safety"; x.rounds.forEach(purge); } }); return; }
 
     try {
       await limit(`rl:judge:${code}`, 10, Math.ceil(CASE_TTL_MS / 1000));
@@ -260,18 +282,26 @@ export function createApp(deps: Deps) {
     const previousSummary = prev && !prev.safety_flag
       ? `${prev.ruling} (fault: A ${prev.fault_split!.a}%, B ${prev.fault_split!.b}%)` : undefined;
 
+    let lastFailure: ReturnType<typeof classifyModelError> | null = null;
+    const tracked: typeof callModel = async (sys, usr) => {
+      try { const out = await callModel(sys, usr); lastFailure = null; return out; }
+      catch (e) { lastFailure = classifyModelError(e); throw e; }
+    };
     const v = await judgeCase(
       { judgeId: cs0.judgeId!, mood, lang: cs0.lang, a: { name: cs0.players.a.name, statement: A.text }, b: { name: cs0.players.b!.name, statement: B.text }, previousSummary },
-      callModel, validateVerdict,
+      tracked, validateVerdict,
     ) as Verdict | null;
+    if (deps.isRealModel) await recordHealth(lastFailure === null, lastFailure ?? undefined);
+    const operatorFix = lastFailure === "auth" || lastFailure === "billing";
 
     await mutate(code, (x) => {
       if (x.state !== "judging") return;
       const r = x.rounds[x.rounds.length - 1];
-      if (!v) { x.state = "judge_error"; x.errorKind = "model"; return; }
-      if (v.safety_flag) { x.state = "safety"; return; } // layer 2: model flag; verdict never stored
+      if (!v) { x.state = "judge_error"; x.errorKind = operatorFix ? "closed" : "model"; return; } // statements are kept so Try again works
+      if (v.safety_flag) { x.state = "safety"; x.rounds.forEach(purge); return; } // layer 2: model flag; verdict never stored
       if (!prev) v.new_evidence = false; // first round has nothing to add evidence to; never trust the model here
       r.verdict = v; r.mood = mood; r.revealAt = now() + REVEAL_DELAY_MS; x.state = "verdict"; x.errorKind = undefined;
+      purge(r); // the verdict is all the judge needs for appeals
     });
   }
 
@@ -303,6 +333,31 @@ export function createApp(deps: Deps) {
       return me;
     });
     return c.json(view(cs, me));
+  });
+
+  // ---------- operator status (disabled unless ADMIN_TOKEN is configured) ----------
+  app.get("/api/admin/status", async (c) => {
+    if (!deps.adminToken) return c.json({ error: "not_found" }, 404);
+    await limit(`rl:admin:${ipOf(c.req.raw)}`, 30, 3600);
+    const given = (c.req.header("authorization") ?? "").replace(/^Bearer\s+/i, "");
+    // Compare hashes so the comparison does not depend on where the strings differ.
+    if ((await sha256(given)) !== (await sha256(deps.adminToken))) throw new HttpError(401, "unauthorized");
+    let probe: { ok: boolean; kind?: string } | undefined;
+    if (c.req.query("probe") === "1") {
+      try { await callModel("Reply with the single word OK.", "ping"); probe = { ok: true }; if (deps.isRealModel) await recordHealth(true); }
+      catch (e) { const kind = classifyModelError(e); probe = { ok: false, kind }; if (deps.isRealModel) await recordHealth(false, kind); }
+    }
+    const health = await store.get<ModelHealth>(HEALTH_KEY);
+    const day = new Date(now()).toISOString().slice(0, 10);
+    const used = Number((await store.get<number>(`cap:${day}`)) ?? 0);
+    const broken = health?.status === "auth" || health?.status === "billing";
+    return c.json({
+      ok: probe ? probe.ok : !broken,
+      model: deps.isRealModel ? "real" : "mock",
+      health: health ?? null, probe: probe ?? null,
+      today: { day, calls: used, cap: deps.dailyCap ?? 300 },
+      serverNow: now(),
+    });
   });
 
   return app;

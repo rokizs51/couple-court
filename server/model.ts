@@ -8,11 +8,30 @@ export function anthropicModel(apiKey: string, model: string): CallModel {
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({ model, max_tokens: 2500, thinking: { type: "disabled" }, system, messages: [{ role: "user", content: user }] }),
     });
-    if (!r.ok) throw new Error("model_http_" + r.status);
+    if (!r.ok) {
+      // Only a coarse code is thrown. The body is read for one phrase and never included in the error.
+      if (r.status === 400) {
+        const eb: any = await r.json().catch(() => null);
+        if (String(eb?.error?.message ?? "").toLowerCase().includes("credit balance")) throw new Error("model_billing");
+      }
+      throw new Error(r.status === 402 ? "model_billing" : "model_http_" + r.status);
+    }
     const j: any = await r.json();
     // Newer models may return a thinking block first: take the text block, not content[0].
     return (j?.content ?? []).filter((b: any) => b?.type === "text").map((b: any) => b.text).join("") ?? "";
   };
+}
+
+export type ModelFailure = "auth" | "billing" | "rate" | "unavailable" | "unknown";
+
+/** Maps a thrown model error to something an operator can act on. */
+export function classifyModelError(e: unknown): ModelFailure {
+  const m = String((e as Error)?.message ?? "");
+  if (m === "model_billing") return "billing";
+  if (/^model_http_(401|403)$/.test(m)) return "auth";
+  if (m === "model_http_429") return "rate";
+  if (/^model_http_(5\d\d)$/.test(m) || /fetch|network/i.test(m)) return "unavailable";
+  return "unknown";
 }
 
 function h(s: string) { let x = 2166136261; for (const ch of s) { x ^= ch.charCodeAt(0); x = Math.imul(x, 16777619); } return x >>> 0; }

@@ -117,13 +117,15 @@ describe("PRIVACY: statements", () => {
     const rb = await s.req("POST", `/api/cases/${s.code}/statement`, s.tb, { text: "my side" });
     expect(rb.json.state).toBe("verdict");
   });
-  it("statements become visible to both only once the verdict exists", async () => {
+  it("statements are never exposed to the other player, and are deleted after the verdict", async () => {
     const s = await setup(); await toDrafting(s);
     await s.req("POST", `/api/cases/${s.code}/statement`, s.ta, { text: "AAA text" });
     await s.req("POST", `/api/cases/${s.code}/statement`, s.tb, { text: "BBB text" });
     const pa = await s.req("GET", `/api/cases/${s.code}`, s.ta);
     expect(pa.json.state).toBe("verdict");
-    expect(pa.json.rounds[0].statements.other.text).toBe("BBB text");
+    // statements are deleted once the verdict exists; nothing to see for either side
+    expect(pa.json.rounds[0].statements.other).toBeNull();
+    expect(pa.json.rounds[0].statements.me).toBeNull();
     expect(pa.json.rounds[0].verdict.fault_split.a + pa.json.rounds[0].verdict.fault_split.b).toBe(100);
     expect(pa.json.rounds[0].revealAt).toBeGreaterThan(pa.json.serverNow);
   });
@@ -243,5 +245,120 @@ describe("appeals", () => {
     await s.req("POST", `/api/cases/${s.code}/statement`, s.tb, { text: "b" });
     await s.req("POST", `/api/cases/${s.code}/appeal`, s.ta);
     expect((await s.req("GET", `/api/cases/${s.code}`, s.tb)).json.judgeId).toBe(before);
+  });
+});
+
+// The default mock echoes statement text into the verdict notes, which would hide purge bugs. This one does not.
+const quiet = async (sys: string, usr: string) => { const v = JSON.parse(await mockModel(sys, usr)); v.notes = { a: "note a", b: "note b" }; return JSON.stringify(v); };
+
+describe("statement purge", () => {
+  it("raw statement text is gone from storage once the verdict exists (kept until then)", async () => {
+    const m = mk(quiet);
+    const c = await m.req("POST", "/api/cases", undefined, { name: "Rani" }); const code = c.json.code;
+    const j = await m.req("POST", `/api/cases/${code}/join`, undefined, { name: "Budi" });
+    const s = { req: m.req, code, ta: c.json.token, tb: j.json.token };
+    await toDrafting(s);
+    await s.req("POST", `/api/cases/${s.code}/statement`, s.ta, { text: "PURGEME-A" });
+    expect(JSON.stringify(store.dump())).toContain("PURGEME-A"); // needed until judged
+    await s.req("POST", `/api/cases/${s.code}/statement`, s.tb, { text: "PURGEME-B" });
+    const dump = JSON.stringify(store.dump());
+    expect(dump).not.toContain("PURGEME-A"); expect(dump).not.toContain("PURGEME-B");
+    expect(dump).toContain("fault_split"); // verdict is kept for appeals
+  });
+  it("appeal still works after purge and the judge still recalls the earlier ruling", async () => {
+    const seen: string[] = [];
+    const { req } = mk(async (sys, usr) => { seen.push(usr); return mockModel(sys, usr); });
+    const c = await req("POST", "/api/cases", undefined, { name: "A" }); const code = c.json.code;
+    const j = await req("POST", `/api/cases/${code}/join`, undefined, { name: "B" });
+    for (const tk of [c.json.token, j.json.token]) await req("POST", `/api/cases/${code}/vote`, tk, { pick: "zen" });
+    await req("POST", `/api/cases/${code}/statement`, c.json.token, { text: "first A" });
+    await req("POST", `/api/cases/${code}/statement`, j.json.token, { text: "first B" });
+    expect((await req("POST", `/api/cases/${code}/appeal`, c.json.token)).status).toBe(200);
+    await req("POST", `/api/cases/${code}/statement`, c.json.token, { text: "second A" });
+    const r = await req("POST", `/api/cases/${code}/statement`, j.json.token, { text: "second B" });
+    expect(r.json.state).toBe("verdict");
+    expect(seen[1]).toContain("The court finds you both equally stubborn"); // previous ruling passed in
+  });
+  it("model safety flag also purges statements", async () => {
+    const { req } = mk(async () => JSON.stringify({ safety_flag: true }));
+    const c = await req("POST", "/api/cases", undefined, { name: "A" }); const code = c.json.code;
+    const j = await req("POST", `/api/cases/${code}/join`, undefined, { name: "B" });
+    for (const tk of [c.json.token, j.json.token]) await req("POST", `/api/cases/${code}/vote`, tk, { pick: "zen" });
+    await req("POST", `/api/cases/${code}/statement`, c.json.token, { text: "SAFETYTEXT-A" });
+    await req("POST", `/api/cases/${code}/statement`, j.json.token, { text: "SAFETYTEXT-B" });
+    expect(JSON.stringify(store.dump())).not.toMatch(/SAFETYTEXT/);
+  });
+  it("prefilter safety purges too", async () => {
+    const s = await setup(); await toDrafting(s);
+    await s.req("POST", `/api/cases/${s.code}/statement`, s.ta, { text: "I'm scared of how they react" });
+    await s.req("POST", `/api/cases/${s.code}/statement`, s.tb, { text: "dishes" });
+    expect(JSON.stringify(store.dump())).not.toMatch(/scared|dishes/);
+  });
+  it("a failed judging keeps statements so Try again works", async () => {
+    let fail = true;
+    const { req } = mk(async (sys, usr) => { if (fail) throw new Error("model_http_503"); return quiet(sys, usr); });
+    const c = await req("POST", "/api/cases", undefined, { name: "A" }); const code = c.json.code;
+    const j = await req("POST", `/api/cases/${code}/join`, undefined, { name: "B" });
+    for (const tk of [c.json.token, j.json.token]) await req("POST", `/api/cases/${code}/vote`, tk, { pick: "zen" });
+    await req("POST", `/api/cases/${code}/statement`, c.json.token, { text: "KEEPME-A" });
+    const r = await req("POST", `/api/cases/${code}/statement`, j.json.token, { text: "KEEPME-B" });
+    expect(r.json.state).toBe("judge_error");
+    expect(JSON.stringify(store.dump())).toContain("KEEPME-A");
+    fail = false;
+    const again = await req("POST", `/api/cases/${code}/retry`, c.json.token);
+    expect(again.json.state).toBe("verdict");
+    expect(JSON.stringify(store.dump())).not.toContain("KEEPME-A");
+  });
+});
+
+describe("model health monitor", () => {
+  const ADMIN = "admin-secret-xyz";
+  async function playRound(req: any, model?: unknown) {
+    const c = await req("POST", "/api/cases", undefined, { name: "A" }); const code = c.json.code;
+    const j = await req("POST", `/api/cases/${code}/join`, undefined, { name: "B" });
+    for (const tk of [c.json.token, j.json.token]) await req("POST", `/api/cases/${code}/vote`, tk, { pick: "zen" });
+    await req("POST", `/api/cases/${code}/statement`, c.json.token, { text: "aaa" });
+    return (await req("POST", `/api/cases/${code}/statement`, j.json.token, { text: "bbb" })).json;
+  }
+  const admin = async (app: any, tok?: string, q = "") =>
+    { const r = await app.request("/api/admin/status" + q, { headers: tok ? { authorization: "Bearer " + tok } : {} }); return { status: r.status, json: (await r.json()) as any }; };
+
+  it("admin endpoint does not exist unless ADMIN_TOKEN is set", async () => {
+    const { app } = mk(); expect((await admin(app, "anything")).status).toBe(404);
+  });
+  it("rejects missing and wrong tokens", async () => {
+    const { app } = mk(counting, { adminToken: ADMIN });
+    expect((await admin(app)).status).toBe(401);
+    expect((await admin(app, "nope")).status).toBe(401);
+    expect((await admin(app, ADMIN)).status).toBe(200);
+  });
+  it("401 from the model: users see the closed message, operator sees status=auth", async () => {
+    const { app, req } = mk(async () => { throw new Error("model_http_401"); }, { adminToken: ADMIN, isRealModel: true });
+    const out = await playRound(req);
+    expect(out.state).toBe("judge_error"); expect(out.error).toBe("closed");
+    const st = await admin(app, ADMIN);
+    expect(st.json.ok).toBe(false); expect(st.json.health.status).toBe("auth");
+    expect(JSON.stringify(st.json)).not.toMatch(/aaa|bbb/);
+  });
+  it("billing failure is distinguished, and recovery flips it back to ok", async () => {
+    let mode: "billing" | "ok" = "billing";
+    const { app, req } = mk(async (s, u) => { if (mode === "billing") throw new Error("model_billing"); return mockModel(s, u); }, { adminToken: ADMIN, isRealModel: true, rng: Math.random });
+    await playRound(req);
+    expect((await admin(app, ADMIN)).json.health.status).toBe("billing");
+    mode = "ok";
+    expect((await playRound(req)).state).toBe("verdict");
+    const st = await admin(app, ADMIN);
+    expect(st.json.ok).toBe(true); expect(st.json.health.status).toBe("ok");
+  });
+  it("a transient 503 is 'degraded', not an operator-fix error", async () => {
+    const { app, req } = mk(async () => { throw new Error("model_http_503"); }, { adminToken: ADMIN, isRealModel: true });
+    const out = await playRound(req);
+    expect(out.error).toBe("model");
+    expect((await admin(app, ADMIN)).json.health.status).toBe("degraded");
+  });
+  it("probe=1 tests the key live and reports the reason", async () => {
+    const { app } = mk(async () => { throw new Error("model_http_401"); }, { adminToken: ADMIN, isRealModel: true });
+    const st = await admin(app, ADMIN, "?probe=1");
+    expect(st.json.probe).toEqual({ ok: false, kind: "auth" }); expect(st.json.ok).toBe(false);
   });
 });

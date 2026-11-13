@@ -9,7 +9,7 @@ Pure logic lives in /shared. Treat prompt.ts and judges.ts as tuned: ask before 
 ## Non-negotiable rules
 - Model API key is server-only. Never in client code.
 - Server never sends a player's statement to the other before the verdict exists. Test at API-response level.
-- Statements: 500 chars, cleanStatement(). Cases expire after 3 days.
+- Statements: 500 chars, cleanStatement(). Cases expire after 3 days. Statement text is DELETED from storage once the verdict exists (or on safety); only verdicts are kept for appeals. A failed judging keeps statements so Try again works.
 - Mood from computeMoodLevel(), never the model.
 - Safety: keyword prefilter (code) AND model safety_flag -> support screen, no verdict, no fault %.
 - Mock model by default; real model opt-in via env var.
@@ -34,3 +34,7 @@ Local Workers test: `npx vite build && npx wrangler dev` with --var flags, e2e v
 ## Design
 Design lives in `docs/design/`. Read `DESIGN.md` first, then match the layout, colors and type of the PNGs.
 Use only variables from `src/styles/tokens.css`. Do not invent new patterns for screens that are not designed; ask first.
+
+## Judge key monitor
+`GET /api/admin/status` (needs ADMIN_TOKEN secret; 404 when unset) reports model health, daily usage, and `?probe=1` tests the key live.
+`node scripts/keymon.mjs status | rotate | setup-admin`. Keys are typed in the terminal, never in chat. Health record: Redis key `health:model`.

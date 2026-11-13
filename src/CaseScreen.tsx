@@ -55,7 +55,7 @@ export function CaseScreen({ code, onHome, onLost }: { code: string; onHome: () 
       {cv.state === "drafting" && <Draft cv={cv} t={t} onSubmit={(txt, ap) => act(() => api.statement(code, txt, ap))} />}
       {cv.state === "judging" && <Judging cv={cv} t={t} />}
       {cv.state === "judge_error" && (
-        <div className="card center"><h2>{t.errTitle}</h2><p className="muted">{cv.error === "cap" ? t.errCap : t.errBody}</p>
+        <div className="card center"><h2>{t.errTitle}</h2><p className="muted">{cv.error === "cap" ? t.errCap : cv.error === "closed" ? t.errClosed : t.errBody}</p>
           {cv.error !== "cap" && <button className="btn primary" onClick={() => act(() => api.retry(code))}>{t.tryAgain}</button>}</div>
       )}
       {cv.state === "verdict" && <Verdict cv={cv} t={t} onAppeal={() => act(() => api.appeal(code))} onHome={onHome} />}

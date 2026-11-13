@@ -13,7 +13,7 @@ export interface CaseView {
   players: { me: string; other: string | null };
   vote: { myPick: JudgePick | null; otherPick: JudgePick | null; otherVoted: boolean; revealed: boolean; deadline: number | null };
   judgeId: JudgeId | null; coinFlip: { a: JudgeId; b: JudgeId; winner: JudgeId } | null;
-  appealCount: number; canAppeal: boolean; rounds: RoundView[]; error: "model" | "cap" | null;
+  appealCount: number; canAppeal: boolean; rounds: RoundView[]; error: "model" | "cap" | "closed" | null;
 }
 
 export class ApiError extends Error { constructor(public status: number, public code: string) { super(code); } }

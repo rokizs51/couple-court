@@ -10,6 +10,7 @@ export interface Env {
   ANTHROPIC_MODEL?: string;
   USE_REAL_MODEL?: string;
   DAILY_CAP?: string;
+  ADMIN_TOKEN?: string;
 }
 
 export default {
@@ -27,6 +28,7 @@ export default {
       callModel: real ? anthropicModel(env.ANTHROPIC_API_KEY!, env.ANTHROPIC_MODEL ?? "claude-haiku-5-5") : mockModel,
       isRealModel: real,
       dailyCap: Number(env.DAILY_CAP ?? 300),
+      adminToken: env.ADMIN_TOKEN || undefined,
     });
     const res = await app.fetch(req);
     // API responses must never be cached by the browser, a CDN or the service worker.

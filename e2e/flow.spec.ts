@@ -43,8 +43,16 @@ test("full two-phone flow: create, join, vote, file, reveal, appeal", async ({ b
   await B.page.getByRole("button", { name: "File statement" }).click();
   await expect(A.page.getByText("The ruling")).toBeVisible({ timeout: 15000 });
   await expect(B.page.getByText("The ruling")).toBeVisible({ timeout: 15000 });
-  // after the verdict both statements are fair game
-  await expect(B.page.locator("body")).toContainText("PRIVATE-A");
+  // statements are deleted once the verdict exists: the API returns none for either player
+  const raw = await B.page.evaluate(async (c) => {
+    const tok = Object.entries(localStorage).find(([k]) => k.includes(c))?.[1] as string;
+    const r = await fetch(`/api/cases/${c}`, { headers: { "x-player-token": tok } });
+    return r.text();
+  }, code);
+  expect(raw).toContain('"verdict"');
+  const rounds = JSON.parse(raw).rounds;
+  expect(rounds[0].statements.me).toBeNull();
+  expect(rounds[0].statements.other).toBeNull();
 
   await A.page.waitForTimeout(4500);
   await A.page.screenshot({ path: "e2e/shots/verdict-A.png", fullPage: true });

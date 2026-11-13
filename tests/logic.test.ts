@@ -73,3 +73,15 @@ describe("verdict + judgeCase", () => {
     expect(p.match(/<\/statement_a>/g)?.length).toBe(1);
   });
 });
+
+import { classifyModelError } from "../server/model";
+describe("classifyModelError", () => {
+  it("maps errors to operator-actionable kinds", () => {
+    expect(classifyModelError(new Error("model_http_401"))).toBe("auth");
+    expect(classifyModelError(new Error("model_http_403"))).toBe("auth");
+    expect(classifyModelError(new Error("model_billing"))).toBe("billing");
+    expect(classifyModelError(new Error("model_http_429"))).toBe("rate");
+    expect(classifyModelError(new Error("model_http_529"))).toBe("unavailable");
+    expect(classifyModelError(new Error("whatever"))).toBe("unknown");
+  });
+});
