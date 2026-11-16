@@ -1,4 +1,5 @@
 import { createApp } from "./app";
+import { withSecurityHeaders } from "./headers";
 import { UpstashStore } from "./upstash";
 import { anthropicModel, mockModel } from "./model";
 
@@ -17,7 +18,7 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     // Only /api/* reaches the Worker first (see wrangler.toml); everything else is a static asset.
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
+    if (!url.pathname.startsWith("/api/")) return withSecurityHeaders(await env.ASSETS.fetch(req));
 
     if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
       return Response.json({ error: "server_misconfigured" }, { status: 500 });
@@ -34,6 +35,6 @@ export default {
     // API responses must never be cached by the browser, a CDN or the service worker.
     const out = new Response(res.body, res);
     out.headers.set("cache-control", "no-store");
-    return out;
+    return withSecurityHeaders(out);
   },
 };

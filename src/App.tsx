@@ -50,7 +50,7 @@ function Home({ lang, setLang, onEnter }: { lang: Lang; setLang: (l: Lang) => vo
         <button className="btn primary" disabled={busy} onClick={create}>{t.openCase}</button>
         <div className="or">· · ·</div>
         <div className="row">
-          <input className="field code" placeholder={t.codePh} maxLength={4} value={joinCode} autoCapitalize="characters"
+          <input className="field code" placeholder={t.codePh} maxLength={6} value={joinCode} autoCapitalize="characters"
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())} />
           <button className="btn dark" onClick={joinNow}>{t.joinCase}</button>
         </div>

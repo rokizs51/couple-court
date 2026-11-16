@@ -27,7 +27,8 @@ describe("text", () => {
     expect(cleanStatement(42)).toBe("");
   });
   it("room codes avoid look-alikes", () => {
-    for (let i = 0; i < 500; i++) { const c = generateRoomCode(); expect(c).toMatch(ROOM_CODE_RE); expect(c).not.toMatch(/[IO01L]/); }
+    for (let i = 0; i < 500; i++) { const c = generateRoomCode(); expect(c).toHaveLength(6); expect(c).toMatch(ROOM_CODE_RE); expect(c).not.toMatch(/[IO01L]/); }
+    expect(ROOM_CODE_RE.test("ABCD")).toBe(true); // legacy 4-char cases stay joinable until they expire
   });
   it("safety prefilter", () => {
     expect(safetyPrefilter("I'm scared of how they react")).toBe(true);

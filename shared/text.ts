@@ -12,13 +12,16 @@ export function cleanStatement(raw: unknown): string {
 }
 
 // Unambiguous alphabet: no I, O, 0, 1, L
-const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789".replace("L", "");
-export function generateRoomCode(rng: () => number = Math.random, len = 4): string {
+const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+/** Cryptographically random source for room codes. Codes are the join credential, so Math.random is not enough. */
+function secureRng() { const b = new Uint32Array(1); crypto.getRandomValues(b); return b[0] / 4294967296; }
+export function generateRoomCode(rng: () => number = secureRng, len = 6): string {
   let s = "";
   for (let i = 0; i < len; i++) s += ALPHABET[Math.floor(rng() * ALPHABET.length)];
   return s;
 }
-export const ROOM_CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}$/;
+/** 6 chars for new cases; 4-char codes are accepted until the old cases expire (3 days). */
+export const ROOM_CODE_RE = /^(?:[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}|[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6})$/;
 
 /** Layer 1 safety: cheap keyword pre-filter. The model flag is layer 2. */
 const SAFETY_PATTERNS: RegExp[] = [

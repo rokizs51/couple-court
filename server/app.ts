@@ -157,7 +157,8 @@ export function createApp(deps: Deps) {
       votes: {}, votesRevealed: false, appealCount: 0, rounds: [{ statements: {} }],
     };
     for (let i = 0; i < 20; i++) {
-      const code = generateRoomCode(rng);
+      // Crypto randomness: the code is the only credential needed to join a waiting case.
+      const code = generateRoomCode();
       if (await store.setNX(key(code), { ...base, code }, Math.ceil(CASE_TTL_MS / 1000))) {
         return c.json({ code, token, expiresAt: base.expiresAt }, 201);
       }
@@ -169,6 +170,7 @@ export function createApp(deps: Deps) {
   app.post("/api/cases/:code/join", async (c) => {
     const code = await authed(c.req.param("code"), undefined);
     await limit(`rl:join:${ipOf(c.req.raw)}`, 60, 600);
+    await limit(`rl:join:code:${code}`, 30, 600); // bounds targeted guessing of one code
     const b = await body(c);
     const token = newToken();
     const hash = await sha256(token);
@@ -184,10 +186,14 @@ export function createApp(deps: Deps) {
 
   // ---------- poll ----------
   app.get("/api/cases/:code", async (c) => {
+    await limit(`rl:get:${ipOf(c.req.raw)}`, 120, 60); // reads are cheap but must not be free to enumerate
     const code = await authed(c.req.param("code"), undefined);
+    const token = tokenOf(c);
+    // Missing case, expired case and wrong token all look the same: no case-existence oracle.
+    if (!token) throw new HttpError(401, "unauthorized");
     let cs = await store.get<Case>(key(code));
-    if (!cs) throw new HttpError(404, "case_not_found");
-    const me = await identify(cs, tokenOf(c));
+    if (!cs) throw new HttpError(401, "unauthorized");
+    const me = await identify(cs, token);
     if (!me) throw new HttpError(401, "unauthorized");
     if (cs.state === "judge_vote" && cs.voteDeadline !== undefined && now() >= cs.voteDeadline) {
       cs = (await mutate(code, (x) => tick(x))).c;
@@ -198,6 +204,7 @@ export function createApp(deps: Deps) {
   // ---------- vote ----------
   app.post("/api/cases/:code/vote", async (c) => {
     const code = await authed(c.req.param("code"), undefined);
+    await limit(`rl:vote:${ipOf(c.req.raw)}`, 120, 60);
     const b = await body(c);
     const pick = b.pick as JudgePick;
     if (pick !== "surprise" && !JUDGE_IDS.includes(pick as JudgeId)) throw new HttpError(400, "bad_pick");
@@ -307,6 +314,7 @@ export function createApp(deps: Deps) {
 
   app.post("/api/cases/:code/retry", async (c) => {
     const code = await authed(c.req.param("code"), undefined);
+    await limit(`rl:retry:${ipOf(c.req.raw)}`, 30, 60); // each retry may spend model budget
     const token = tokenOf(c);
     const { r: me } = await mutate(code, async (cs) => {
       const me = await identify(cs, token);
@@ -323,6 +331,7 @@ export function createApp(deps: Deps) {
   // ---------- appeal ----------
   app.post("/api/cases/:code/appeal", async (c) => {
     const code = await authed(c.req.param("code"), undefined);
+    await limit(`rl:appeal:${ipOf(c.req.raw)}`, 30, 60);
     const token = tokenOf(c);
     const { c: cs, r: me } = await mutate(code, async (cs) => {
       const me = await identify(cs, token);

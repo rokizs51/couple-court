@@ -38,7 +38,7 @@ beforeEach(() => { t = 1_000_000; calls = 0; });
 describe("create / join", () => {
   it("creates, joins, rejects a third player and bad codes", async () => {
     const s = await setup();
-    expect(s.code).toMatch(/^[A-Z2-9]{4}$/);
+    expect(s.code).toMatch(/^[A-Z2-9]{6}$/);
     const third = await s.req("POST", `/api/cases/${s.code}/join`, undefined, { name: "Eve" });
     expect(third.status).toBe(409);
     expect((await s.req("POST", `/api/cases/ZZZZ/join`)).status).toBe(404);
@@ -57,7 +57,34 @@ describe("create / join", () => {
     const s = await setup();
     expect(store.ttlOf(`case:${s.code}`)!).toBeLessThanOrEqual(3 * 24 * 3600 * 1000);
     t += 3 * 24 * 3600 * 1000 + 1;
-    expect((await s.req("GET", `/api/cases/${s.code}`, s.ta)).status).toBe(404);
+    // Expired and unauthorized look identical (no case-existence oracle).
+    expect((await s.req("GET", `/api/cases/${s.code}`, s.ta)).status).toBe(401);
+  });
+});
+
+describe("abuse resistance", () => {
+  it("polling cannot be used to discover which codes exist", async () => {
+    const m = mk();
+    const c = await m.req("POST", "/api/cases", undefined, { name: "A" });
+    const unknown = await m.app.request("/api/cases/ZZZZZZ", { headers: { "cf-connecting-ip": "3.3.3.1" } });
+    const existing = await m.app.request(`/api/cases/${c.json.code}`, { headers: { "cf-connecting-ip": "3.3.3.2" } });
+    const wrongToken = await m.app.request(`/api/cases/${c.json.code}`, { headers: { "cf-connecting-ip": "3.3.3.3", "x-player-token": "x".repeat(64) } });
+    for (const r of [unknown, existing, wrongToken]) expect(r.status).toBe(401);
+  });
+  it("polling is rate limited per IP", async () => {
+    const m = mk();
+    let status = 0;
+    for (let i = 0; i < 121; i++) {
+      status = (await m.app.request("/api/cases/ZZZZZZ", { headers: { "cf-connecting-ip": "4.4.4.4" } })).status;
+    }
+    expect(status).toBe(429);
+  });
+  it("joining one code is rate limited even across IPs", async () => {
+    const m = mk();
+    const c = await m.req("POST", "/api/cases", undefined, { name: "A" });
+    let status = 0;
+    for (let i = 0; i < 31; i++) status = (await m.req("POST", `/api/cases/${c.json.code}/join`, undefined, { name: "B" + i })).status;
+    expect(status).toBe(429);
   });
 });
 
