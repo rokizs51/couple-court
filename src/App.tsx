@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { api, ApiError, getToken, setToken, forgetToken } from "./api";
 import { dict, Lang } from "./i18n";
 import { CaseScreen } from "./CaseScreen";
+import { CourtMark } from "./components/CourtMark";
 import { ROOM_CODE_RE } from "../shared/text";
 import { token } from "./judgeStyle";
 
@@ -42,7 +43,7 @@ function Home({ lang, setLang, onEnter }: { lang: Lang; setLang: (l: Lang) => vo
   return (
     <main className="screen center">
       <button className="lang" onClick={() => setLang(lang === "en" ? "id" : "en")}>{t.langName}</button>
-      <div className="home-mark" aria-hidden="true">CC</div>
+      <CourtMark />
       <h1>Couple Court</h1>
       <p className="muted">{t.tagline}</p>
       <div className="home-card">
