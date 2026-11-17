@@ -1,0 +1,67 @@
+name: Deploy
+
+# Every push to main: typecheck, unit tests, build, deploy to Cloudflare,
+# then verify the live site is actually serving the new bundle.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # allow a manual re-deploy from the Actions tab
+
+permissions:
+  contents: read
+
+# Queue deploys in order; never cancel one mid-flight (half-uploaded assets).
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Secrets live on the Worker and persist across deploys; only the API
+      # token and account id are needed here.
+      - name: Deploy to Cloudflare
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Prove the deploy: the live HTML must reference the bundle we just built.
+      - name: Smoke test live site
+        run: |
+          set -euo pipefail
+          url="https://couple-court.rokizs.site"
+          new_js=$(grep -oE 'assets/index-[^"]+\.js' dist/index.html | head -1)
+          echo "Expecting live site to serve $new_js"
+          for i in $(seq 1 20); do
+            html=$(curl -s -H 'Cache-Control: no-cache' "$url/") || true
+            if printf '%s' "$html" | grep -q "$new_js"; then
+              echo "OK: live site is serving $new_js"
+              exit 0
+            fi
+            echo "attempt $i: not yet live, retrying in 6s"
+            sleep 6
+          done
+          echo "::error::Live site never picked up $new_js"
+          exit 1

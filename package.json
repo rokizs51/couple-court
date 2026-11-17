@@ -5,9 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "dev:api": "tsx server/dev.ts",
     "dev:web": "vite",
     "build": "vite build",
+    "deploy": "npm run build && wrangler deploy",
     "e2e": "playwright test"
   },
   "keywords": [],

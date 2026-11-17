@@ -30,6 +30,8 @@ Small slices, tests for privacy and transitions, mobile first.
 Single Worker serves static `dist/` (assets) and `/api/*` (Hono). Store = UpstashStore (REST). See wrangler.toml.
 Secrets via `npx wrangler secret put` only: ANTHROPIC_API_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN.
 Local Workers test: `npx vite build && npx wrangler dev` with --var flags, e2e via `BASE_URL=... npx playwright test`.
+Auto-deploy: pushing to main runs `.github/workflows/deploy.yml` (typecheck, tests, build, `wrangler deploy`, live smoke test).
+Needs repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Manual fallback: `npm run deploy`.
 
 ## Design
 Design lives in `docs/design/`. Read `DESIGN.md` first, then match the layout, colors and type of the PNGs.
